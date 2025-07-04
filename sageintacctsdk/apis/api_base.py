@@ -435,6 +435,7 @@ class ApiBase:
         count = self.count(None)
         print(f"API says total count is: {count}")
         pagesize = self.__pagesize
+        print(f"pagesize: {pagesize}")
 
         # Initial readByQuery request
         data = {
