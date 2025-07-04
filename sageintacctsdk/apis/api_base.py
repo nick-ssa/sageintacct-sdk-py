@@ -193,13 +193,13 @@ class ApiBase:
         raw_response = self.__post_request_for_raw_response(dict_body, api_url)
         try:
             parsed_xml = xmltodict.parse(raw_response.text, force_list={self.__dimension})
-            print(parsed_xml)
+            # print(parsed_xml)
         except:
             #bad xml format from Sage Intacct fix
             raw_response = '<root>' + raw_response.text + '</root>'
             parsed_xml = xmltodict.parse(raw_response, force_list={self.__dimension})['root']
         parsed_response = json.loads(json.dumps(parsed_xml))
-        print(parsed_response)
+        # print(parsed_response)
 
         if raw_response.status_code == 200:
             response = parsed_response.get('response', {})
@@ -473,7 +473,8 @@ class ApiBase:
         while result_id and num_remaining > 0:
             data = {
                 'readMore': {
-                    'resultId': result_id
+                    'resultId': result_id,
+                    'pagesize': pagesize
                 }
             }
             response = self.format_and_send_request(data)['data']
