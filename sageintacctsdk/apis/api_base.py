@@ -434,7 +434,6 @@ class ApiBase:
         """
         complete_data = []
         count = self.count(None)
-        print(f"API says total count is: {count}")
         pagesize = self.__pagesize
 
         # Initial readByQuery request
@@ -457,13 +456,9 @@ class ApiBase:
                 break
 
         if paginated_data is None:
-            print(f"Dimension {self.__dimension} not found in response, returning empty list.")
             return []
 
         complete_data.extend(paginated_data if isinstance(paginated_data, list) else [paginated_data])
-        actual_records_processed = len(complete_data)
-        print(f"Page 1: got {len(paginated_data)} records")
-        print(f"Total processed so far: {actual_records_processed}")
 
         # Pagination using readMore and resultId
         result_id = response.get('@resultId')
@@ -484,19 +479,14 @@ class ApiBase:
                     break
 
             if paginated_data is None:
-                print(f"Dimension {self.__dimension} not found in response, breaking loop.")
                 break
 
             complete_data.extend(paginated_data if isinstance(paginated_data, list) else [paginated_data])
-            actual_records_processed = len(complete_data)
-            print(f"Page {page}: got {len(paginated_data)} records")
-            print(f"Total processed so far: {actual_records_processed}")
 
             result_id = response.get('@resultId')
             num_remaining = int(response.get('@numremaining', 0))
             page += 1
 
-        print(f"Expected {count}, actually got {len(complete_data)}")
         return complete_data
 
     def get_all_generator(self, field: str = None, value: str = None, fields: list = None, updated_at: str = None, order_by_field: str = None, order: str = None):
