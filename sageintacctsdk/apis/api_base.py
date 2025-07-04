@@ -473,8 +473,7 @@ class ApiBase:
         while result_id and num_remaining > 0:
             data = {
                 'readMore': {
-                    'resultId': result_id,
-                    'pagesize': pagesize
+                    'resultId': result_id
                 }
             }
             response = self.format_and_send_request(data)['data']
