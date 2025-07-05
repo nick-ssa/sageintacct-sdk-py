@@ -442,7 +442,7 @@ class ApiBase:
             'readByQuery': {
                 'object': self.__dimension,
                 'fields': '*',
-                'pagesize': pagesize,
+                'pagesize': '2000',
                 'query': "{0} = '{1}'".format(field, value),
             }
         }
