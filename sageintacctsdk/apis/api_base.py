@@ -4,14 +4,16 @@ API Base class with util functions
 import json
 import logging
 import datetime
+import time
 import uuid
 from warnings import warn
-from typing import Dict, List, Tuple
+from typing import Callable, Dict, List, Tuple
 from urllib.parse import unquote
 import re
 
 import xmltodict
 import requests
+from urllib3.exceptions import ProtocolError
 
 from ..exceptions import SageIntacctSDKError, ExpiredTokenError, InvalidTokenError, NoPrivilegeError, \
     WrongParamsError, NotFoundItemError, InternalServerError, DataIntegrityWarning
@@ -19,6 +21,35 @@ from .constants import dimensions_fields_mapping
 
 
 logger = logging.getLogger(__name__)
+
+TRANSIENT_NETWORK_ERRORS = (
+    requests.exceptions.ChunkedEncodingError,
+    requests.exceptions.ConnectionError,
+    requests.exceptions.Timeout,
+    ProtocolError,
+)
+
+
+def _retry_transient(fn: Callable, label: str, max_retries: int = 5, base_delay: int = 5):
+    """Call `fn` and retry with exponential backoff on transient network errors.
+
+    Sage Intacct occasionally terminates paginated responses mid-stream
+    ("Response ended prematurely"). When that happens inside readMore, the
+    server-side resultId is still valid, so retrying the single failing call
+    resumes pagination without re-fetching earlier pages.
+    """
+    for attempt in range(max_retries):
+        try:
+            return fn()
+        except TRANSIENT_NETWORK_ERRORS as e:
+            if attempt == max_retries - 1:
+                logger.error("%s: transient error on final attempt (%s/%s): %s",
+                             label, attempt + 1, max_retries, e)
+                raise
+            wait = base_delay * (2 ** attempt)
+            logger.warning("%s: transient error on attempt %s/%s (%s). Retrying in %ss...",
+                           label, attempt + 1, max_retries, e, wait)
+            time.sleep(wait)
 
 class ApiBase:
     """The base class for all API classes."""
@@ -447,7 +478,10 @@ class ApiBase:
             }
         }
 
-        response = self.format_and_send_request(data)['data']
+        response = _retry_transient(
+            lambda: self.format_and_send_request(data),
+            label=f"get_all({self.__dimension}) readByQuery",
+        )['data']
 
         # Find the key in response that matches self.__dimension, case-insensitively
         paginated_data = None
@@ -476,7 +510,10 @@ class ApiBase:
                     'resultId': result_id
                 }
             }
-            response = self.format_and_send_request(data)['data']
+            response = _retry_transient(
+                lambda: self.format_and_send_request(data),
+                label=f"get_all({self.__dimension}) readMore page {page}",
+            )['data']
             paginated_data = None
             for key in response:
                 if key.lower() == self.__dimension.lower():
